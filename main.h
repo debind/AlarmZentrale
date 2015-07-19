@@ -23,6 +23,9 @@ typedef struct tagAlarmCenter
 	int iWarningMode;
 	int iAlarmSchwelle1;
 	int iAlarmSchwelle2;
+	int iOnDelay;
+	int iAlarmDelay;
+	int iWarningDelay;
 	int iTcpPort;
 	int iCmd;
 	int iAlarms;

@@ -11,12 +11,18 @@
 #include <semaphore.h>
 
 
+#include <wiringPi.h>
+
 #include <dispsw.h>
 
 #include "types.h"
 #include "main.h"
 
 #include "configfile.h"
+
+#define A1 6
+#define A2 10
+#define A3 11
 
 //--------------------------------------------------
 // local function prototypes
@@ -39,21 +45,24 @@ sem_t       mutex_CmdBlock;
 ALARMCENTER tAlarmCenter = {0};
 //--------------------------------------------------
 
-extern void funcMenu0(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu1(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu2(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu3(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu4(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu5(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu6(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
-extern void funcMenu7(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu0 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu1 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu2 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu3 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu4 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu5 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu6 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu7 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu8 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu9 (UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 extern void funcMenu10(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 extern void funcMenu11(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu12(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 extern void funcMenu15(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 
 void (*afuncptr[100])(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)={
-	funcMenu0, funcMenu1, funcMenu2, funcMenu3, funcMenu4, funcMenu5, funcMenu6, funcMenu7, funcDft   , funcDft,
-	funcMenu10  , funcMenu11  , funcDft, funcDft, funcDft, funcMenu15, funcDft, funcDft, funcDft, funcDft,
+	funcMenu0, funcMenu1, funcMenu2, funcMenu3, funcMenu4, funcMenu5, funcMenu6, funcMenu7, funcMenu8 , funcMenu9,
+	funcMenu10  , funcMenu11  , funcMenu12, funcDft, funcDft, funcMenu15, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
@@ -63,6 +72,11 @@ void (*afuncptr[100])(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)={
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft
 };
+
+
+int iAlarmCountDown=0;
+int iWarningCountDown=0;
+int iOnOffCountDown=0;
 
 
 //--------------------------------------------------
@@ -119,9 +133,18 @@ int main(int argc, char * argv[])
 	dispsw_vSetMenuValue(5,  tAlarmCenter.iWarningTime);
 	dispsw_vSetMenuValue(6,  tAlarmCenter.iWarningMode);
 	dispsw_vSetMenuValue(7,  tAlarmCenter.iAlarmSchwelle1);
-	dispsw_vSetMenuValue(10, tAlarmCenter.iAlarms);
+	dispsw_vSetMenuValue(8,  tAlarmCenter.iOnDelay);
+	dispsw_vSetMenuValue(9,  tAlarmCenter.iAlarmDelay);
+	dispsw_vSetMenuValue(10, tAlarmCenter.iWarningDelay);
 
 	tAlarmCenter.iState = 0;
+
+	pinMode(A1, OUTPUT);
+	pinMode(A2, OUTPUT);
+	pinMode(A3, OUTPUT);
+	digitalWrite(A1, 0);
+	digitalWrite(A2, 0);
+	digitalWrite(A3, 0);
 
 	// --------------------------------------------------------
 	// welcome to the machine
@@ -145,30 +168,30 @@ int main(int argc, char * argv[])
 
 		iCount++;
 		//------------------------------
-		// Alarm decrement each 1 second
-		if (iCount % 20 == 0)  // 0.5 second
+		// Alarm funktion
+		if (iCount % 20 == 0)  // 1.0 second
 		{
 			if (tAlarmCenter.iAlarms) tAlarmCenter.iAlarms--;
+			AlarmFkt(&tAlarmCenter);
+			//------------------------------
 		}
 		//------------------------------
 
 		//------------------------------
-		// flush logfile each 5 second
-		if (iCount % 200 == 0)  // 5 second flush logfile
+		// flush logfile each 10 second
+		if (iCount % 200 == 0)  // 10 second flush logfile
 		{
 			fflush(fLogFile);
 		}
 		//------------------------------
 
-		//------------------------------
-		// evaluate 
-		AlarmFkt(&tAlarmCenter);
-		//------------------------------
-
 		//--------------------------------------
 		// update display
-		dispsw_vSetMenuValue(10, tAlarmCenter.iAlarms);
-		dispsw_vSetMenuValue(11, tAlarmCenter.iState);
+		dispsw_vSetMenuValue(11, tAlarmCenter.iAlarms);
+		dispsw_vSetMenuValue(12, tAlarmCenter.iState);
+		dispsw_vSetMenuValue(13, iAlarmCountDown);
+		dispsw_vSetMenuValue(14, iWarningCountDown);
+		dispsw_vSetMenuValue(15, 12);//iOnOffCountDown);
 		//--------------------------------------
 
 		//--------------------------------------
@@ -212,44 +235,97 @@ int main(int argc, char * argv[])
 void AlarmFkt(ALARMCENTER* pAlarmCenter)
 {
 	static int iCycles;
-
+	static int iAlarmD1 = 0;
+	static int iWarningD1 = 0;
+	static int iOnOffD1 = 0;
 	iCycles++;
 	switch(tAlarmCenter.iState)
 	{
 		case 0:
-			iCycles = 0;
 			if     (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
 			{				
+				iCycles = 0;
 				tAlarmCenter.iState = 2;
 			}
 			else if(pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
 			{
+				iCycles = 0;
 				tAlarmCenter.iState = 1;
 			}
 			break;
 		case 1:  // WARNING
 			if     (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
 			{
-				tAlarmCenter.iState = 2;
 				iCycles = 0;
+				tAlarmCenter.iState = 2;
 			}
-			else if (iCycles >= pAlarmCenter->iWarningTime * 20)
+			else if (pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle1) 
 			{
-				tAlarmCenter.iState = 0;
+				if (iCycles >= pAlarmCenter->iWarningTime)
+				{
+					iCycles = 0;
+					tAlarmCenter.iState = 0;
+				}
 			}
 			break;
 		case 2:  // ALARM
-			if (iCycles >= pAlarmCenter->iAlarmTime * 20)
+			if (pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle2) 
 			{
-				if ((pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle2) )
+				if (iCycles >= pAlarmCenter->iAlarmTime)
 				{
+					iCycles = 0;
 					tAlarmCenter.iState = 1;
-				}				
+				}
 			}
 			break;
 		default:
 			break;
 	}
+
+	if ((iOnOffD1 == 0) && (tAlarmCenter.iOnOff == 1)) iOnOffCountDown = pAlarmCenter->iOnDelay;
+	if (iOnOffCountDown) iOnOffCountDown--;
+	iOnOffD1 = tAlarmCenter.iOnOff;
+
+	if ((iAlarmD1 != 2) && (tAlarmCenter.iState == 2)) iAlarmCountDown = pAlarmCenter->iAlarmDelay;
+	if (iAlarmCountDown) iAlarmCountDown--;
+	iAlarmD1 = tAlarmCenter.iState;
+
+	if ((iWarningD1 != 1) && (tAlarmCenter.iState == 1)) iWarningCountDown = pAlarmCenter->iWarningDelay;
+	if (iWarningCountDown) iWarningCountDown--;
+	iWarningD1 = tAlarmCenter.iState;
+
+	if (iOnOffCountDown != 0)
+	{
+		digitalWrite(A1, 0);
+		digitalWrite(A2, 0);
+		digitalWrite(A3, 0);
+		pAlarmCenter->iAlarms = 0;
+	}
+	else if (tAlarmCenter.iOnOff == 1) 
+	{
+		if      ((tAlarmCenter.iState == 2)  && (iAlarmCountDown == 0)) // 
+		{
+			digitalWrite(A1, pAlarmCenter->iAlarmMode & 0x01);
+			digitalWrite(A2, (pAlarmCenter->iAlarmMode & 0x02)>>1);
+			digitalWrite(A3, (pAlarmCenter->iAlarmMode & 0x04)>>2);
+		}
+		else if ((tAlarmCenter.iState == 1)  && (iWarningCountDown == 0)) // 
+		{
+			digitalWrite(A1, pAlarmCenter->iWarningMode & 0x01);
+			digitalWrite(A2, (pAlarmCenter->iWarningMode & 0x02)>>1);
+			digitalWrite(A3, (pAlarmCenter->iWarningMode & 0x04)>>2);
+		}
+		else
+		{
+		}
+	}
+	else
+	{
+		digitalWrite(A1, 0);
+		digitalWrite(A2, 0);
+		digitalWrite(A3, 0);
+	}
+
 }
 
 

@@ -18,6 +18,7 @@ void funcMenu10(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)
 			dispsw_Set(u8MenuNumber/10, u8MenuNumber%10, u8MenuValue/10, u8MenuValue%10);
 			break;
 		case SET:
+			tAlarmCenter.iWarningDelay = u8MenuValue;
 			break;
 	}
 }

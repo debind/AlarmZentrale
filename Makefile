@@ -2,8 +2,8 @@
 
 
 
-alarm : main.o menu0.o menu1.o menu2.o menu3.o menu4.o menu5.o menu6.o menu7.o menu10.o menu11.o menu15.o configfile.o
-	cc -o alarm main.o menu0.o menu1.o menu2.o menu3.o menu4.o menu5.o menu6.o menu7.o menu10.o menu11.o menu15.o configfile.o -liniparser -lpthread -ldispsw
+alarm : main.o menu0.o menu1.o menu2.o menu3.o menu4.o menu5.o menu6.o menu7.o menu8.o menu9.o menu10.o menu11.o menu12.o menu15.o configfile.o
+	cc -o alarm main.o menu0.o menu1.o menu2.o menu3.o menu4.o menu5.o menu6.o menu7.o menu8.o menu9.o menu10.o menu11.o menu12.o menu15.o configfile.o -liniparser -lpthread -ldispsw -lwiringPi
 
 main.o : main.c main.h types.h configfile.h
 	cc -Wall -c main.c
@@ -32,11 +32,20 @@ menu6.o : menu6.c main.h types.h configfile.h
 menu7.o : menu7.c main.h types.h configfile.h
 	cc -Wall -c menu7.c
 
+menu8.o : menu8.c main.h types.h configfile.h
+	cc -Wall -c menu8.c
+
+menu9.o : menu9.c main.h types.h configfile.h
+	cc -Wall -c menu9.c
+
 menu10.o : menu10.c main.h types.h configfile.h
 	cc -Wall -c menu10.c
 
 menu11.o : menu11.c main.h types.h  configfile.h
 	cc -Wall -c menu11.c
+
+menu12.o : menu12.c main.h types.h  configfile.h
+	cc -Wall -c menu12.c
 
 menu15.o : menu15.c main.h types.h  configfile.h
 	cc -Wall -c menu15.c
