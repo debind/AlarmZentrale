@@ -261,7 +261,7 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 			}
 			else if (pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle1) 
 			{
-				if (iCycles >= pAlarmCenter->iWarningTime)
+				if (iCycles >= pAlarmCenter->iWarningTime + pAlarmCenter->iWarningDelay)
 				{
 					iCycles = 0;
 					tAlarmCenter.iState = 0;
@@ -271,7 +271,7 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 		case 2:  // ALARM
 			if (pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle2) 
 			{
-				if (iCycles >= pAlarmCenter->iAlarmTime)
+				if (iCycles >= pAlarmCenter->iAlarmTime + pAlarmCenter->iAlarmDelay)
 				{
 					iCycles = 0;
 					tAlarmCenter.iState = 1;
