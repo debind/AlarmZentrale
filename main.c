@@ -317,6 +317,9 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 		}
 		else
 		{
+			digitalWrite(A1, 0);
+			digitalWrite(A2, 0);
+			digitalWrite(A3, 0);
 		}
 	}
 	else
