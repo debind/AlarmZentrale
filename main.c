@@ -191,7 +191,7 @@ int main(int argc, char * argv[])
 		dispsw_vSetMenuValue(12, tAlarmCenter.iState);
 		dispsw_vSetMenuValue(13, iAlarmCountDown);
 		dispsw_vSetMenuValue(14, iWarningCountDown);
-		dispsw_vSetMenuValue(15, 12);//iOnOffCountDown);
+		dispsw_vSetMenuValue(15, iOnOffCountDown);
 		//--------------------------------------
 
 		//--------------------------------------
