@@ -117,7 +117,7 @@ int main(int argc, char * argv[])
 
 	//-----------------------------------------
 	// open Logfile
-	fLogFile = fopen(LOG_FILE, "w+");
+	fLogFile = fopen(LOG_FILE, "a");
 	//-----------------------------------------
 
 	//--------------------------------------
