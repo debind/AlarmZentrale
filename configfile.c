@@ -8,36 +8,27 @@
 
 #include "types.h"
 #include "main.h"
+#include "configfile.h"
 
 
 //--------------------------------------------------
 // create a default conf file
 //--------------------------------------------------
-void configfile_CreateDefault(void)
+void configfile_CreateDefault(ALARMCENTER* ptAlarmCenter)
 {
-    FILE    *   ini ;
-    ini = fopen(CONF_FILE, "w");
-    fprintf(ini,
-    "#\n"
-    "# configuration file alarmcenter.conf\n"
-    "#\n"
-    "\n"
-    "[main]\n"
-    "onoff     = 0 ;\n"
-    "alarmmode = 0 ;\n"
-    "warningmode = 0 ;\n"
-    "warningtime = 0 ;\n"
-    "alarmtime = 0 ;\n"
-    "alarmschwelle1 = 0 ;\n"
-    "alarmschwelle2 = 0 ;\n"
-	"ondelay = 10; \n"
-	"alarmdelay = 5; \n"
-	"warningdelay = 5; \n"
-    "\n"
-    "[tcp]\n"
-    "port = 12345 ;\n"
-    "\n");
-    fclose(ini);
+    ptAlarmCenter->iOnOff            = 1;
+	ptAlarmCenter->iAlarmMode        = 5;
+	ptAlarmCenter->iAlarmTime        = 10;
+	ptAlarmCenter->iAlarmSchwelle2   = 50;
+	ptAlarmCenter->iWarningMode      = 1;
+	ptAlarmCenter->iWarningTime      = 10;
+	ptAlarmCenter->iAlarmSchwelle1   = 15;
+	ptAlarmCenter->iOnDelay          = 10;
+	ptAlarmCenter->iAlarmDelay       = 5;
+	ptAlarmCenter->iWarningDelay     = 5;
+	ptAlarmCenter->iTcpPort          = 2345;
+    
+	configfile_Safe(CONF_FILE, ptAlarmCenter);
 }
 
 //--------------------------------------------------
@@ -75,33 +66,28 @@ int configfile_Read(char * ini_name, ALARMCENTER* ptAlarmCenter)
 //--------------------------------------------------
 int configfile_Safe(char * ini_name, ALARMCENTER* ptAlarmCenter)
 {
-	char txt[500];
+	FILE* fIni;
 
-	FILE* fTest;
-    dictionary  *   ini ;
-
-    ini = iniparser_load(ini_name);
-    if (ini==NULL) {
-        fprintf(stderr, "cannot parse file: %s\n", ini_name);
-        return -1 ;
-    }
+	fIni = fopen(ini_name,"w+");
+	if (fIni == NULL)	return 1;
+	
+	fprintf(fIni, "[main]\n");
+	fprintf(fIni, "onoff = %d\n", ptAlarmCenter->iOnOff);
+	fprintf(fIni, "alarmmode = %d\n", ptAlarmCenter->iAlarmMode);
+	fprintf(fIni, "alarmtime = %d\n", ptAlarmCenter->iAlarmTime);
+	fprintf(fIni, "alarmschwelle2 = %d\n", ptAlarmCenter->iAlarmSchwelle2);
+	fprintf(fIni, "warningmode = %d\n", ptAlarmCenter->iWarningMode);
+	fprintf(fIni, "warningtime = %d\n", ptAlarmCenter->iWarningTime);
+	fprintf(fIni, "alarmschwelle1 = %d\n", ptAlarmCenter->iAlarmSchwelle1);
+	fprintf(fIni, "ondelay = %d\n", ptAlarmCenter->iOnDelay);
+	fprintf(fIni, "alarmdelay = %d\n", ptAlarmCenter->iAlarmDelay);
+	fprintf(fIni, "warningdelay = %d\n", ptAlarmCenter->iWarningDelay);
+	fprintf(fIni, "\n");
+	fprintf(fIni, "[tcp]\n");
+	fprintf(fIni, "port = %d\n", ptAlarmCenter->iTcpPort);
  
-	sprintf(txt, "%d", ptAlarmCenter->iOnOff)         ; iniparser_set(ini, "main:onoff", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iAlarmMode)     ; iniparser_set(ini, "main:alarmmode", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iAlarmTime)     ; iniparser_set(ini, "main:alarmtime", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iWarningMode)   ; iniparser_set(ini, "main:warningmode", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iWarningTime)   ; iniparser_set(ini, "main:warningtime", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iAlarmSchwelle1); iniparser_set(ini, "main:alarmschwelle1", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iAlarmSchwelle2); iniparser_set(ini, "main:alarmschwelle2", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iOnDelay)       ; iniparser_set(ini, "main:ondelay", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iAlarmDelay)    ; iniparser_set(ini, "main:alarmdelay", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iWarningDelay)  ; iniparser_set(ini, "main:warningdelay", txt);
-	sprintf(txt, "%d", ptAlarmCenter->iTcpPort)       ; iniparser_set(ini, "Tcp:Port", txt);
-    
-	fTest = fopen(ini_name,"w");
-	if (fTest != NULL)	iniparser_dump_ini (ini, fTest);
+    fclose(fIni);
 
-    iniparser_freedict(ini);
     return 0 ;
 }
 

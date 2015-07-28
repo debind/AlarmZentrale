@@ -7,6 +7,7 @@
 
 #include "types.h"
 #include "main.h"
+#include "configfile.h"
 
 
 
@@ -22,6 +23,10 @@ void funcMenu2(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)
 			break;
 		case SET:
 			tAlarmCenter.iAlarmTime = u8MenuValue;
+			//--------------------------------------
+			configfile_Safe(CONF_FILE, &tAlarmCenter);
+			//--------------------------------------
+
 			break;
 	}
 }

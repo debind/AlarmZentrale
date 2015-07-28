@@ -24,6 +24,21 @@
 #define A2 10
 #define A3 11
 
+#define OFF_OUTPUT          digitalWrite(A1, 0), digitalWrite(A2, 0), digitalWrite(A3, 0)
+
+#define WARNING_OUTPUT      digitalWrite(A1, pAlarmCenter->iWarningMode & 0x01),\
+	                        digitalWrite(A2, (pAlarmCenter->iWarningMode & 0x02)>>1),\
+							digitalWrite(A3, (pAlarmCenter->iWarningMode & 0x04)>>2)
+
+#define ALARM_OUTPUT        digitalWrite(A1, pAlarmCenter->iAlarmMode & 0x01),\
+	                        digitalWrite(A2, (pAlarmCenter->iAlarmMode & 0x02)>>1),\
+							digitalWrite(A3, (pAlarmCenter->iAlarmMode & 0x04)>>2)
+#define ALL_OFF 0
+#define START_WARNING 1
+#define WARNING 2
+#define START_ALARM 3
+#define ALARM 4
+
 //--------------------------------------------------
 // local function prototypes
 void* CommandThread        (void* text);
@@ -95,7 +110,7 @@ int main(int argc, char * argv[])
 	status = configfile_Read(CONF_FILE, &tAlarmCenter);
 	if (status == -1)
 	{
-		configfile_CreateDefault();
+		configfile_CreateDefault(&tAlarmCenter);
 		printf("created new conf file\n");
 		(void)configfile_Read(CONF_FILE, &tAlarmCenter);
 	}
@@ -171,8 +186,12 @@ int main(int argc, char * argv[])
 		// Alarm funktion
 		if (iCount % 20 == 0)  // 1.0 second
 		{
-			if (tAlarmCenter.iAlarms) tAlarmCenter.iAlarms--;
 			AlarmFkt(&tAlarmCenter);
+
+			printf("OnOff=%d A-Time=%d A-Mode=%d A-Schwelle=%d W-Time=%d W-Mode=%d W-Schwelle=%d A3A2A1=%d%d%d #=%d state=%d port=%d\n",
+					    tAlarmCenter.iOnOff, tAlarmCenter.iAlarmTime, tAlarmCenter.iAlarmMode, tAlarmCenter.iAlarmSchwelle2,
+				        tAlarmCenter.iWarningTime, tAlarmCenter.iWarningMode, tAlarmCenter.iAlarmSchwelle1, 
+						digitalRead(A3), digitalRead(A2), digitalRead(A1), tAlarmCenter.iAlarms, tAlarmCenter.iState, tAlarmCenter.iTcpPort);
 			//------------------------------
 		}
 		//------------------------------
@@ -210,10 +229,6 @@ int main(int argc, char * argv[])
 	// --------------------------------------------------------
 
 	//--------------------------------------
-	configfile_Safe(CONF_FILE, &tAlarmCenter);
-	//--------------------------------------
-
-	//--------------------------------------
 	// wait for the threads to stop
 	pthread_join(threadCmd, (void*)piStatus);
 	//--------------------------------------
@@ -234,103 +249,69 @@ int main(int argc, char * argv[])
 //******************************************************************************
 void AlarmFkt(ALARMCENTER* pAlarmCenter)
 {
-	static int iCycles;
-	static int iAlarmD1 = 0;
-	static int iWarningD1 = 0;
-	static int iOnOffD1 = 0;
-	iCycles++;
-	switch(tAlarmCenter.iState)
+	static int iWarningCycles;
+	static int iAlarmCycles;
+	iWarningCycles++;
+	iAlarmCycles++;
+
+	switch(pAlarmCenter->iState)
 	{
-		case 0:
-			if     (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
-			{				
-				iCycles = 0;
-				tAlarmCenter.iState = 2;
-			}
-			else if(pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
-			{
-				iCycles = 0;
-				tAlarmCenter.iState = 1;
-			}
+		case ALL_OFF:   // ALL OFF
+			OFF_OUTPUT;
+			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCycles   = 0; pAlarmCenter->iState = START_ALARM;}
+			else if (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1) {iWarningCycles = 0; pAlarmCenter->iState = START_WARNING;}			
 			break;
-		case 1:  // WARNING
-			if     (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
+		case START_WARNING:   // START WARNING
+			OFF_OUTPUT;
+			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCycles   = 0; pAlarmCenter->iState = START_ALARM;}
+			else if (iWarningCycles        >= pAlarmCenter->iWarningDelay)   {iWarningCycles = 0; pAlarmCenter->iState = WARNING;}
+			break;
+		case WARNING:   // WARNING
+			WARNING_OUTPUT;
+			iAlarmCycles = 0;
+			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {pAlarmCenter->iState = START_ALARM;}
+			else if (iWarningCycles        >= pAlarmCenter->iWarningTime)    
 			{
-				iCycles = 0;
-				tAlarmCenter.iState = 2;
-			}
-			else if (pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle1) 
-			{
-				if (iCycles >= pAlarmCenter->iWarningTime + pAlarmCenter->iWarningDelay)
+				pAlarmCenter->iAlarms -= pAlarmCenter->iAlarmSchwelle1;
+				if ( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
 				{
-					iCycles = 0;
-					tAlarmCenter.iState = 0;
+					iWarningCycles = 0; 
+				}
+				else
+				{
+					iWarningCycles = 0; 
+					pAlarmCenter->iState = ALL_OFF;
 				}
 			}
 			break;
-		case 2:  // ALARM
-			if (pAlarmCenter->iAlarms < pAlarmCenter->iAlarmSchwelle2) 
+		case START_ALARM:   // START ALARM
+			if (iAlarmCycles >= pAlarmCenter->iAlarmDelay) {iAlarmCycles = 0; pAlarmCenter->iState = ALARM;}
+			break;
+		case ALARM:   // ALARM
+			ALARM_OUTPUT;
+			if (iAlarmCycles >= pAlarmCenter->iAlarmTime)    
 			{
-				if (iCycles >= pAlarmCenter->iAlarmTime + pAlarmCenter->iAlarmDelay)
+				pAlarmCenter->iAlarms -= pAlarmCenter->iAlarmSchwelle2;
+				if     ( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
 				{
-					iCycles = 0;
-					tAlarmCenter.iState = 1;
+					iAlarmCycles = 0; 
+				}
+				else if( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
+				{
+					iWarningCycles = 0; 
+					pAlarmCenter->iState = WARNING;
+				}
+				else
+				{
+					iWarningCycles = 0; 
+					pAlarmCenter->iState = ALL_OFF;
 				}
 			}
 			break;
 		default:
 			break;
 	}
-
-	if ((iOnOffD1 == 0) && (tAlarmCenter.iOnOff == 1)) iOnOffCountDown = pAlarmCenter->iOnDelay;
-	if (iOnOffCountDown) iOnOffCountDown--;
-	iOnOffD1 = tAlarmCenter.iOnOff;
-
-	if ((iAlarmD1 != 2) && (tAlarmCenter.iState == 2)) iAlarmCountDown = pAlarmCenter->iAlarmDelay;
-	if (iAlarmCountDown) iAlarmCountDown--;
-	iAlarmD1 = tAlarmCenter.iState;
-
-	if ((iWarningD1 != 1) && (tAlarmCenter.iState == 1)) iWarningCountDown = pAlarmCenter->iWarningDelay;
-	if (iWarningCountDown) iWarningCountDown--;
-	iWarningD1 = tAlarmCenter.iState;
-
-	if (iOnOffCountDown != 0)
-	{
-		digitalWrite(A1, 0);
-		digitalWrite(A2, 0);
-		digitalWrite(A3, 0);
-		pAlarmCenter->iAlarms = 0;
-	}
-	else if (tAlarmCenter.iOnOff == 1) 
-	{
-		if      ((tAlarmCenter.iState == 2)  && (iAlarmCountDown == 0)) // 
-		{
-			digitalWrite(A1, pAlarmCenter->iAlarmMode & 0x01);
-			digitalWrite(A2, (pAlarmCenter->iAlarmMode & 0x02)>>1);
-			digitalWrite(A3, (pAlarmCenter->iAlarmMode & 0x04)>>2);
-		}
-		else if ((tAlarmCenter.iState == 1)  && (iWarningCountDown == 0)) // 
-		{
-			digitalWrite(A1, pAlarmCenter->iWarningMode & 0x01);
-			digitalWrite(A2, (pAlarmCenter->iWarningMode & 0x02)>>1);
-			digitalWrite(A3, (pAlarmCenter->iWarningMode & 0x04)>>2);
-		}
-		else
-		{
-			digitalWrite(A1, 0);
-			digitalWrite(A2, 0);
-			digitalWrite(A3, 0);
-		}
-	}
-	else
-	{
-		digitalWrite(A1, 0);
-		digitalWrite(A2, 0);
-		digitalWrite(A3, 0);
-	}
-
 }
-
 
 
 //******************************************************************************

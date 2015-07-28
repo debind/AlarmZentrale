@@ -7,6 +7,7 @@
 
 #include "types.h"
 #include "main.h"
+#include "configfile.h"
 
 void funcMenu4(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)
 {
@@ -18,6 +19,10 @@ void funcMenu4(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)
 			break;
 		case SET:
 			tAlarmCenter.iAlarmSchwelle2 = u8MenuValue;
+			//--------------------------------------
+			configfile_Safe(CONF_FILE, &tAlarmCenter);
+			//--------------------------------------
+
 			break;
 
 	}

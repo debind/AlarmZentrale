@@ -7,6 +7,7 @@
 
 #include "types.h"
 #include "main.h"
+#include "configfile.h"
 
 
 void funcMenu1(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)
@@ -16,9 +17,13 @@ void funcMenu1(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)
 		case DISP:
 		case FLASH:
 			dispsw_Set(u8MenuNumber/10, u8MenuNumber%10, u8MenuValue/10, u8MenuValue%10);
+
 			break;
 		case SET:
 			tAlarmCenter.iOnOff = u8MenuValue;
+			//--------------------------------------
+			configfile_Safe(CONF_FILE, &tAlarmCenter);
+			//--------------------------------------
 			break;
 	}
 }
