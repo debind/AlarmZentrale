@@ -251,15 +251,18 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 {
 	static int iWarningCycles;
 	static int iAlarmCycles;
+	static int iCount=0;
 	iWarningCycles++;
 	iAlarmCycles++;
+	iCount++;
 
 	switch(pAlarmCenter->iState)
 	{
 		case ALL_OFF:   // ALL OFF
 			OFF_OUTPUT;
 			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCycles   = 0; pAlarmCenter->iState = START_ALARM;}
-			else if (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1) {iWarningCycles = 0; pAlarmCenter->iState = START_WARNING;}			
+			else if (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1) {iWarningCycles = 0; pAlarmCenter->iState = START_WARNING;}	
+			else if ( pAlarmCenter->iAlarms > 0) { if ((iCount % 10 )== 0) pAlarmCenter->iAlarms--; }
 			break;
 		case START_WARNING:   // START WARNING
 			OFF_OUTPUT;
