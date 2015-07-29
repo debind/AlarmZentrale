@@ -369,7 +369,7 @@ void LogData(FILE* logfile, CMD* ptCmd)
 void err_exit(char *message)
  {
 	perror(message);
-	exit(1);
+	//exit(1);
  }
 
 
