@@ -33,11 +33,14 @@
 #define ALARM_OUTPUT        digitalWrite(A1, pAlarmCenter->iAlarmMode & 0x01),\
 	                        digitalWrite(A2, (pAlarmCenter->iAlarmMode & 0x02)>>1),\
 							digitalWrite(A3, (pAlarmCenter->iAlarmMode & 0x04)>>2)
-#define ALL_OFF 0
-#define START_WARNING 1
-#define WARNING 2
-#define START_ALARM 3
-#define ALARM 4
+
+#define DEACTIVATED 0
+#define ACTIVATED 1
+#define ALL_OFF 2
+#define START_WARNING 3
+#define WARNING 4
+#define START_ALARM 5
+#define ALARM 6
 
 //--------------------------------------------------
 // local function prototypes
@@ -74,11 +77,13 @@ extern void funcMenu10(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 extern void funcMenu11(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 extern void funcMenu12(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 extern void funcMenu15(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu20(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
+extern void funcMenu21(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd);
 
 void (*afuncptr[100])(UINT8 u8MenuNumber, UINT8 u8MenuValue, UINT8 u8Cmd)={
 	funcMenu0, funcMenu1, funcMenu2, funcMenu3, funcMenu4, funcMenu5, funcMenu6, funcMenu7, funcMenu8 , funcMenu9,
-	funcMenu10  , funcMenu11  , funcMenu12, funcDft, funcDft, funcMenu15, funcDft, funcDft, funcDft, funcDft,
-	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
+	funcMenu10, funcMenu11  , funcMenu12, funcDft, funcDft, funcMenu15, funcDft, funcDft, funcDft, funcDft,
+	funcMenu20, funcMenu21  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
 	funcDft  , funcDft  , funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft, funcDft,
@@ -93,6 +98,7 @@ int iAlarmCountDown=0;
 int iWarningCountDown=0;
 int iOnOffCountDown=0;
 
+int ihour, imin;
 
 //--------------------------------------------------
 // main entry
@@ -249,64 +255,97 @@ int main(int argc, char * argv[])
 //******************************************************************************
 void AlarmFkt(ALARMCENTER* pAlarmCenter)
 {
-	static int iWarningCycles;
-	static int iAlarmCycles;
-	static int iCount=0;
-	iWarningCycles++;
-	iAlarmCycles++;
+	static int iCount;
+	iAlarmCountDown++;
+	iWarningCountDown++;
+	iOnOffCountDown++;
 	iCount++;
+
+	if (pAlarmCenter->iStopHour > pAlarmCenter->iStartHour)
+	{
+		if ((pAlarmCenter->iHour >= pAlarmCenter->iStartHour) &&
+            (pAlarmCenter->iHour < pAlarmCenter->iStopHour) )
+		{
+			// alarmcenter is active
+		}
+		else
+		{
+			pAlarmCenter->iAlarms = 0;
+			return;
+		}
+	}
+	else
+	{
+		if ((pAlarmCenter->iHour >= pAlarmCenter->iStopHour) &&
+            (pAlarmCenter->iHour < pAlarmCenter->iStartHour) )
+		{
+			pAlarmCenter->iAlarms = 0;
+			return;
+		}
+		else
+		{
+			// alarmcenter is active
+		}
+	}
+
 
 	switch(pAlarmCenter->iState)
 	{
-		case ALL_OFF:   // ALL OFF
+		case DEACTIVATED: // DEACTIVATED
+			if      (pAlarmCenter->iOnOff == 1) {iOnOffCountDown = 0; pAlarmCenter->iState = ACTIVATED;}
+			break;
+		case ACTIVATED:   // ACTIVATED
+			if (iOnOffCountDown >= pAlarmCenter->iOnDelay) {pAlarmCenter->iState = ACTIVATED;}
+			break;
+		case ALL_OFF:     // ALL OFF
 			OFF_OUTPUT;
-			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCycles   = 0; pAlarmCenter->iState = START_ALARM;}
-			else if (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1) {iWarningCycles = 0; pAlarmCenter->iState = START_WARNING;}	
+			if      (pAlarmCenter->iOnOff == 0)                              {pAlarmCenter->iState = DEACTIVATED;}
+			else if (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCountDown   = 0; pAlarmCenter->iState = START_ALARM;}
+			else if (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1) {iWarningCountDown = 0; pAlarmCenter->iState = START_WARNING;}	
 			else if ( pAlarmCenter->iAlarms > 0) { if ((iCount % 10 )== 0) pAlarmCenter->iAlarms--; }
 			break;
 		case START_WARNING:   // START WARNING
 			OFF_OUTPUT;
-			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCycles   = 0; pAlarmCenter->iState = START_ALARM;}
-			else if (iWarningCycles        >= pAlarmCenter->iWarningDelay)   {iWarningCycles = 0; pAlarmCenter->iState = WARNING;}
+			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCountDown   = 0; pAlarmCenter->iState = START_ALARM;}
+			else if (iWarningCountDown     >= pAlarmCenter->iWarningDelay)   {iWarningCountDown = 0; pAlarmCenter->iState = WARNING;}
 			break;
 		case WARNING:   // WARNING
-			WARNING_OUTPUT;
-			iAlarmCycles = 0;
-			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {pAlarmCenter->iState = START_ALARM;}
-			else if (iWarningCycles        >= pAlarmCenter->iWarningTime)    
+			WARNING_OUTPUT;			
+			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCountDown = 0; pAlarmCenter->iState = START_ALARM;}
+			else if (iWarningCountDown     >= pAlarmCenter->iWarningTime)    
 			{
 				pAlarmCenter->iAlarms -= pAlarmCenter->iAlarmSchwelle1;
 				if ( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
 				{
-					iWarningCycles = 0; 
+					iWarningCountDown = 0; 
 				}
 				else
 				{
-					iWarningCycles = 0; 
+					iWarningCountDown = 0; 
 					pAlarmCenter->iState = ALL_OFF;
 				}
 			}
 			break;
 		case START_ALARM:   // START ALARM
-			if (iAlarmCycles >= pAlarmCenter->iAlarmDelay) {iAlarmCycles = 0; pAlarmCenter->iState = ALARM;}
+			if (iAlarmCountDown >= pAlarmCenter->iAlarmDelay) {iAlarmCountDown = 0; pAlarmCenter->iState = ALARM;}
 			break;
 		case ALARM:   // ALARM
 			ALARM_OUTPUT;
-			if (iAlarmCycles >= pAlarmCenter->iAlarmTime)    
+			if (iAlarmCountDown >= pAlarmCenter->iAlarmTime)    
 			{
 				pAlarmCenter->iAlarms -= pAlarmCenter->iAlarmSchwelle2;
 				if     ( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
 				{
-					iAlarmCycles = 0; 
+					iAlarmCountDown = 0;  
 				}
 				else if( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
 				{
-					iWarningCycles = 0; 
+					iWarningCountDown = 0; 
 					pAlarmCenter->iState = WARNING;
 				}
 				else
 				{
-					iWarningCycles = 0; 
+					iWarningCountDown = 0; 
 					pAlarmCenter->iState = ALL_OFF;
 				}
 			}
@@ -389,7 +428,7 @@ void* CommandThread(void* text)
 
 	/*--- socket() ---*/
 	sock_fd = socket(PF_INET, SOCK_STREAM, 0);
-	if (sock_fd == -1) err_exit("server: Can't create new socket");
+	if (sock_fd == -1) {err_exit("server: Can't create new socket"); exit(0);}
 
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_port = htons(tAlarmCenter.iTcpPort);
@@ -397,11 +436,11 @@ void* CommandThread(void* text)
 
 	/*--- bind() ---*/
 	err = bind(sock_fd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_in));
-	if (err == -1) err_exit("server: bind() failed");
+	if (err == -1) {err_exit("server: bind() failed"); exit(0);}
 
 	/*--- listen() ---*/
 	err = listen(sock_fd, 1);
-	if (err == -1) err_exit("server: listen() failed");
+	if (err == -1) {err_exit("server: listen() failed"); exit(0);}
 
 	/*--- accept() ---*/
 	while (tAlarmCenter.iExit == 0)

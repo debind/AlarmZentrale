@@ -31,6 +31,10 @@ typedef struct tagAlarmCenter
 	int iAlarms;
 	int iState;
 	int iExit;
+	int iStartHour;
+	int iStopHour;
+	int iHour;
+	int iMin;
 }ALARMCENTER;
 //--------------------------------------------------
 
@@ -52,8 +56,6 @@ typedef struct tagCmd
 //--------------------------------------------------
 
 extern ALARMCENTER tAlarmCenter ;
-
-
 
 #define DISP   1
 #define FLASH  2

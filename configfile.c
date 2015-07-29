@@ -27,6 +27,8 @@ void configfile_CreateDefault(ALARMCENTER* ptAlarmCenter)
 	ptAlarmCenter->iAlarmDelay       = 5;
 	ptAlarmCenter->iWarningDelay     = 5;
 	ptAlarmCenter->iTcpPort          = 2345;
+	ptAlarmCenter->iStartHour        = 2;
+	ptAlarmCenter->iStopHour         = 5;
     
 	configfile_Safe(CONF_FILE, ptAlarmCenter);
 }
@@ -54,6 +56,8 @@ int configfile_Read(char * ini_name, ALARMCENTER* ptAlarmCenter)
 	ptAlarmCenter->iOnDelay          = iniparser_getint(ini, "main:ondelay", 50);
 	ptAlarmCenter->iAlarmDelay       = iniparser_getint(ini, "main:alarmdelay", 50);
 	ptAlarmCenter->iWarningDelay     = iniparser_getint(ini, "main:warningdelay", 50);
+	ptAlarmCenter->iStartHour        = iniparser_getint(ini, "main:starthour", 2);
+	ptAlarmCenter->iStopHour         = iniparser_getint(ini, "main:stophour", 5);
 
 	ptAlarmCenter->iTcpPort          = iniparser_getint(ini, "tcp:port", 1234);
     
@@ -82,6 +86,8 @@ int configfile_Safe(char * ini_name, ALARMCENTER* ptAlarmCenter)
 	fprintf(fIni, "ondelay = %d\n", ptAlarmCenter->iOnDelay);
 	fprintf(fIni, "alarmdelay = %d\n", ptAlarmCenter->iAlarmDelay);
 	fprintf(fIni, "warningdelay = %d\n", ptAlarmCenter->iWarningDelay);
+	fprintf(fIni, "starthour = %d\n", ptAlarmCenter->iStartHour);
+	fprintf(fIni, "stophour = %d\n", ptAlarmCenter->iStopHour);
 	fprintf(fIni, "\n");
 	fprintf(fIni, "[tcp]\n");
 	fprintf(fIni, "port = %d\n", ptAlarmCenter->iTcpPort);
