@@ -10,6 +10,8 @@
 #define MAINCYCLE          (50)  // [ms]
 
 #define CMD_ITEM_SIZE      (100)
+
+#define TIME_FACTOR        (10)  // Timefaktor für Warning- und Alarmzeiten
 //--------------------------------------------------
 
 //--------------------------------------------------

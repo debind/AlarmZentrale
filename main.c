@@ -316,7 +316,7 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 		case WARNING:   // WARNING
 			WARNING_OUTPUT;			
 			if      (pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2) {iAlarmCountDown = 0; pAlarmCenter->iState = START_ALARM;}
-			else if (iWarningCountDown     >= pAlarmCenter->iWarningTime)    
+			else if (iWarningCountDown     >= (pAlarmCenter->iWarningTime * TIME_FACTOR))    
 			{
 				pAlarmCenter->iAlarms -= pAlarmCenter->iAlarmSchwelle1;
 				if ( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle1)
@@ -335,7 +335,7 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 			break;
 		case ALARM:   // ALARM
 			ALARM_OUTPUT;
-			if (iAlarmCountDown >= pAlarmCenter->iAlarmTime)    
+			if (iAlarmCountDown >= (pAlarmCenter->iAlarmTime * TIME_FACTOR))    
 			{
 				pAlarmCenter->iAlarms -= pAlarmCenter->iAlarmSchwelle2;
 				if     ( pAlarmCenter->iAlarms >= pAlarmCenter->iAlarmSchwelle2)
