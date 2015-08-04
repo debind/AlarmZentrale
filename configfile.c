@@ -28,7 +28,7 @@ void configfile_CreateDefault(ALARMCENTER* ptAlarmCenter)
 	ptAlarmCenter->iWarningDelay     = 5;
 	ptAlarmCenter->iTcpPort          = 2345;
 	ptAlarmCenter->iStartHour        = 2;
-	ptAlarmCenter->iStopHour         = 5;
+	ptAlarmCenter->iStopHour         = 23;
     
 	configfile_Safe(CONF_FILE, ptAlarmCenter);
 }
@@ -57,7 +57,7 @@ int configfile_Read(char * ini_name, ALARMCENTER* ptAlarmCenter)
 	ptAlarmCenter->iAlarmDelay       = iniparser_getint(ini, "main:alarmdelay", 50);
 	ptAlarmCenter->iWarningDelay     = iniparser_getint(ini, "main:warningdelay", 50);
 	ptAlarmCenter->iStartHour        = iniparser_getint(ini, "main:starthour", 2);
-	ptAlarmCenter->iStopHour         = iniparser_getint(ini, "main:stophour", 5);
+	ptAlarmCenter->iStopHour         = iniparser_getint(ini, "main:stophour", 23);
 
 	ptAlarmCenter->iTcpPort          = iniparser_getint(ini, "tcp:port", 1234);
     

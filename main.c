@@ -98,7 +98,6 @@ int iAlarmCountDown=0;
 int iWarningCountDown=0;
 int iOnOffCountDown=0;
 
-int ihour, imin;
 
 //--------------------------------------------------
 // main entry
@@ -157,6 +156,8 @@ int main(int argc, char * argv[])
 	dispsw_vSetMenuValue(8,  tAlarmCenter.iOnDelay);
 	dispsw_vSetMenuValue(9,  tAlarmCenter.iAlarmDelay);
 	dispsw_vSetMenuValue(10, tAlarmCenter.iWarningDelay);
+	dispsw_vSetMenuValue(20, tAlarmCenter.iStartHour);
+	dispsw_vSetMenuValue(21, tAlarmCenter.iStopHour);
 
 	tAlarmCenter.iState = 0;
 
@@ -194,7 +195,7 @@ int main(int argc, char * argv[])
 		{
 			AlarmFkt(&tAlarmCenter);
 
-			printf("OnOff=%d A-Time=%d A-Mode=%d A-Schwelle=%d W-Time=%d W-Mode=%d W-Schwelle=%d A3A2A1=%d%d%d #=%d state=%d port=%d\n",
+		printf("OnOff=%d A-Time=%d A-Mode=%d A-Schwelle=%d W-Time=%d W-Mode=%d W-Schwelle=%d A3A2A1=%d%d%d #=%d state=%d port=%d\n",
 					    tAlarmCenter.iOnOff, tAlarmCenter.iAlarmTime, tAlarmCenter.iAlarmMode, tAlarmCenter.iAlarmSchwelle2,
 				        tAlarmCenter.iWarningTime, tAlarmCenter.iWarningMode, tAlarmCenter.iAlarmSchwelle1, 
 						digitalRead(A3), digitalRead(A2), digitalRead(A1), tAlarmCenter.iAlarms, tAlarmCenter.iState, tAlarmCenter.iTcpPort);
@@ -271,6 +272,7 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 		else
 		{
 			pAlarmCenter->iAlarms = 0;
+			printf("START STOP HOUR DEACTIVATED STOP>START\n");
 			return;
 		}
 	}
@@ -279,6 +281,7 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 		if ((pAlarmCenter->iHour >= pAlarmCenter->iStopHour) &&
             (pAlarmCenter->iHour < pAlarmCenter->iStartHour) )
 		{
+			printf("START STOP HOUR DEACTIVATED STOP<=START\n");
 			pAlarmCenter->iAlarms = 0;
 			return;
 		}
@@ -292,10 +295,11 @@ void AlarmFkt(ALARMCENTER* pAlarmCenter)
 	switch(pAlarmCenter->iState)
 	{
 		case DEACTIVATED: // DEACTIVATED
+			printf("DEACTIVATED: iOnOffCountDown=%d pAlarmCenter->iState=%d\n", iOnOffCountDown, pAlarmCenter->iState);
 			if      (pAlarmCenter->iOnOff == 1) {iOnOffCountDown = 0; pAlarmCenter->iState = ACTIVATED;}
 			break;
 		case ACTIVATED:   // ACTIVATED
-			if (iOnOffCountDown >= pAlarmCenter->iOnDelay) {pAlarmCenter->iState = ACTIVATED;}
+			if (iOnOffCountDown >= pAlarmCenter->iOnDelay) {pAlarmCenter->iState = ALL_OFF;}
 			break;
 		case ALL_OFF:     // ALL OFF
 			OFF_OUTPUT;
@@ -386,6 +390,11 @@ void getcmd(char* Src, CMD* ptCmd)
 	if (pBuf != NULL) { strcpy(ptCmd->acBuf7, pBuf); pBuf = strtok(NULL, " "); }
 	if (pBuf != NULL) { strcpy(ptCmd->acBuf8, pBuf); pBuf = strtok(NULL, " "); }
 	if (pBuf != NULL) { strcpy(ptCmd->acBuf9, pBuf); pBuf = strtok(NULL, " "); }
+
+	//
+	//printf( "%s %s %s %s %s %s %s\n", ptCmd->acBuf0, ptCmd->acBuf1, 
+	//	                                       ptCmd->acBuf2, ptCmd->acBuf3, 
+	//										   ptCmd->acBuf4, ptCmd->acBuf5, ptCmd->acBuf6);
 }
 
 //******************************************************************************
@@ -418,49 +427,32 @@ void err_exit(char *message)
 void* CommandThread(void* text)
 {
 	int         iStatus;
-	char*       pBuf;
-	char        Trash[200];
 	int         nReceived;
-	int         sock_fd, client_fd,  err, length;
+	int         sock_fd, err;
 	socklen_t   addr_size;
 	struct      sockaddr_in my_addr, client_addr;
 	printf(" ... done\n ");
 
-	/*--- socket() ---*/
-	sock_fd = socket(PF_INET, SOCK_STREAM, 0);
+	sock_fd = socket(AF_INET,SOCK_DGRAM,0);
 	if (sock_fd == -1) {err_exit("server: Can't create new socket"); exit(0);}
 
-	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(tAlarmCenter.iTcpPort);
-	my_addr.sin_addr.s_addr = INADDR_ANY;
+	bzero(&my_addr,sizeof(my_addr));
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_addr.s_addr=htonl(INADDR_ANY);
+	my_addr.sin_port=htons(tAlarmCenter.iTcpPort);
 
 	/*--- bind() ---*/
-	err = bind(sock_fd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_in));
+	err = bind(sock_fd, (struct sockaddr *)&my_addr, sizeof(my_addr));
 	if (err == -1) {err_exit("server: bind() failed"); exit(0);}
+	printf(" bind return: %d\n ", err);
 
-	/*--- listen() ---*/
-	err = listen(sock_fd, 1);
-	if (err == -1) {err_exit("server: listen() failed"); exit(0);}
-
-	/*--- accept() ---*/
 	while (tAlarmCenter.iExit == 0)
 	{
-		/*--- accept() ---*/
+
 		addr_size = sizeof(struct sockaddr_in);
-		client_fd = accept(sock_fd, (struct sockaddr *)&client_addr, &addr_size);
-		if (client_fd == -1)  err_exit("server: accept() failed");
+		nReceived = recvfrom(sock_fd, CmdBuffer, 500, 0,(struct sockaddr *)&client_addr, &addr_size);
 
-		pBuf      = CmdBuffer;
-		nReceived = 0;
-		do
-		{
-			length     = recv(client_fd, pBuf, 5, 0);
-			nReceived += length;
-			pBuf      += length;
-		}
-		while((CmdBuffer[nReceived-1] != 0) && (nReceived < 200));
-
-		while (recv(client_fd, Trash, 100, 0) != 0);
+		CmdBuffer[nReceived]=0;
 
 		if (nReceived != 0)
 		{
@@ -475,8 +467,6 @@ void* CommandThread(void* text)
 			sem_post(&mutex_CmdBlock);
 		}
 	}
-
-	close(client_fd);
 	close(sock_fd);
 
 	pthread_exit(&iStatus);
